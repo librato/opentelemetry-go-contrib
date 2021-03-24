@@ -3,6 +3,7 @@ package appoptics
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/appoptics/appoptics-apm-go/v1/ao"
@@ -39,6 +40,7 @@ func NewExporter() (*Exporter, error) {
 }
 
 func (e *Exporter) 	ExportSpans(ctx context.Context, ss []*export.SpanSnapshot) error {
+	log.Println("exporting spans...")
 	for _, span := range ss {
 		xTraceID := getXTraceID(span.SpanContext.TraceID().String(), span.SpanContext.SpanID().String())
 
@@ -52,13 +54,16 @@ func (e *Exporter) 	ExportSpans(ctx context.Context, ss []*export.SpanSnapshot) 
 		var traceContext context.Context
 		kvs := extractKvs(span)
 
-		if len(span.ParentSpanID.String()) == 0 {
+		if !span.ParentSpanID.IsValid() {
+			log.Println("creating new AO trace...")
 			trace := ao.NewTraceWithOverrides(span.Name, startOverrides, nil)
 			traceContext = ao.NewContext(context.Background(), trace)
 			trace.SetStartTime(span.StartTime) // This is for histogram only
 			trace.EndWithOverrides(endOverrides, kvs...)
 		} else {
 			parentXTraceID := getXTraceID(span.SpanContext.TraceID().String(), span.ParentSpanID.String())
+			log.Printf("creating continue AO trace... parent=%s", span.ParentSpanID.String())
+
 			traceContext = ao.FromXTraceIDContext(context.Background(), parentXTraceID)
 			aoSpan, _ := ao.BeginSpanWithOverrides(traceContext, span.Name, ao.SpanOptions{}, startOverrides)
 			aoSpan.EndWithOverrides(endOverrides, kvs...)
