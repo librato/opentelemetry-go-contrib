@@ -62,6 +62,7 @@ func (e *Exporter) 	ExportSpans(ctx context.Context, ss []*export.SpanSnapshot) 
 
 		if !span.ParentSpanID.IsValid() {
 			trace := ao.NewTraceWithOverrides(span.Name, startOverrides, nil)
+			trace.SetTransactionName(span.Name)
 			traceContext = ao.NewContext(context.Background(), trace)
 			trace.SetStartTime(span.StartTime) // This is for histogram only
 			trace.EndWithOverrides(endOverrides, kvs...)
